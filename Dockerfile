@@ -30,7 +30,7 @@ RUN pip install comfy-cli
 RUN /usr/bin/yes | comfy --workspace /comfyui install --cuda-version 11.8 --nvidia --version 0.2.7
 
 # Clone LTX repository for custom nodes
-RUN git clone https://github.com/ComfyUI/ComfyUI-LTXVideo.git /comfyui/custom_nodes/ComfyUI-LTXVideo
+RUN git clone https://github.com/Lightricks/ComfyUI-LTXVideo.git /comfyui/custom_nodes/ComfyUI-LTXVideo
 
 # Install dependencies for LTX
 WORKDIR /comfyui/custom_nodes/ComfyUI-LTXVideo

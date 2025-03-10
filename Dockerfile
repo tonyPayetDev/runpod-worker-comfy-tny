@@ -10,7 +10,7 @@ ENV PYTHONUNBUFFERED=1
 # Speed up some cmake builds
 ENV CMAKE_BUILD_PARALLEL_LEVEL=8
 
-# Install Python, git and other necessary tools
+# Install Python, git, and other necessary tools
 RUN apt-get update && apt-get install -y \
     python3.10 \
     python3-pip \
@@ -29,6 +29,19 @@ RUN pip install comfy-cli
 # Install ComfyUI
 RUN /usr/bin/yes | comfy --workspace /comfyui install --cuda-version 11.8 --nvidia --version 0.2.7
 
+# Clone LTX repository for custom nodes
+RUN git clone https://github.com/ComfyUI/ComfyUI-LTXVideo.git /comfyui/custom_nodes/ComfyUI-LTXVideo
+
+# Install dependencies for LTX
+WORKDIR /comfyui/custom_nodes/ComfyUI-LTXVideo
+RUN pip install -r requirements.txt
+
+# Download LTX model
+RUN wget -O /comfyui/models/checkpoints/ltx-video-2b-v0.9.1.safetensors https://huggingface.co/Lightricks/LTX-Video/blob/main/ltx-video-2b-v0.9.1.safetensors
+
+# Install T5 encoder
+RUN comfy --workspace /comfyui install --node t5-encoder
+
 # Change working directory to ComfyUI
 WORKDIR /comfyui
 
@@ -36,13 +49,13 @@ WORKDIR /comfyui
 RUN pip install runpod requests
 
 # Support for the network volume
-ADD src/extra_model_paths.yaml ./
+ADD src/extra_model_paths.yaml ./ 
 
 # Go back to the root
 WORKDIR /
 
 # Add scripts
-ADD src/start.sh src/restore_snapshot.sh src/rp_handler.py test_input.json ./
+ADD src/start.sh src/restore_snapshot.sh src/rp_handler.py test_input.json ./ 
 RUN chmod +x /start.sh /restore_snapshot.sh
 
 # Optionally copy the snapshot file

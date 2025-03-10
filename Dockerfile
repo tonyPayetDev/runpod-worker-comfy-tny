@@ -64,6 +64,9 @@ ADD *snapshot*.json /
 # Restore the snapshot to install custom nodes
 RUN /restore_snapshot.sh
 
+# Update all dependencies and pull latest changes
+RUN python main.py --update-all && git pull
+
 # Start container
 CMD ["/start.sh"]
 

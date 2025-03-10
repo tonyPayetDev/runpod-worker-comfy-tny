@@ -40,7 +40,7 @@ RUN pip install -r requirements.txt
 RUN wget -O /comfyui/models/checkpoints/ltx-video-2b-v0.9.1.safetensors https://huggingface.co/Lightricks/LTX-Video/blob/main/ltx-video-2b-v0.9.1.safetensors
 
 # Download the google_t5-v1_1-xxl_encoderonly model
-RUN wget -O /comfyui/models/checkpoints/google_t5-v1_1-xxl_encoderonly.safetensors https://huggingface.co/mcmonkey/google_t5-v1_1-xxl_encoderonly/resolve/main/google_t5-v1_1-xxl_encoderonly.safetensors
+RUN wget -O /comfyui/models/checkpoints/t5xxl_fp8_e4m3fn.safetensors https://huggingface.co/mcmonkey/google_t5-v1_1-xxl_encoderonly/resolve/main/t5xxl_fp8_e4m3fn.safetensors?download=true
 
 # Install T5 encoder
 RUN comfy --workspace /comfyui install --node t5-encoder

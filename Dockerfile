@@ -65,7 +65,7 @@ RUN chmod +x /start.sh /restore_snapshot.sh
 RUN /restore_snapshot.sh
 
 # Mettre à jour toutes les dépendances et récupérer les dernières modifications
-RUN python main.py --update-all && git pull
+RUN python main.py 
 
 # Démarrer le conteneur
 CMD ["/start.sh"]

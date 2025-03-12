@@ -120,7 +120,7 @@ RUN if [ "$MODEL_TYPE" = "sdxl" ]; then \
 # Stage 3: Final image
 FROM base as final
 
-# Copy models from stage 2 to the final image
+# Copy models from stage 2 to the final image test
 COPY --from=downloader /comfyui/models /comfyui/models
 
 # Start container

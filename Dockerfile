@@ -99,8 +99,8 @@ RUN if [ "$MODEL_TYPE" = "sdxl" ]; then \
         https://huggingface.co/black-forest-labs/FLUX.1-dev/resolve/main/ae.safetensors; \
     elif [ "$MODEL_TYPE" = "ltx" ]; then
     # Installation des bibliothèques nécessaires
-        pip install xformers==0.0.28.post3 opencv-python imageio imageio-ffmpeg ffmpeg-python av runpod
-        pip install torchsde einops diffusers transformers accelerate peft timm kornia scikit-image moviepy==1.0.3
+        RUN pip install xformers==0.0.28.post3 opencv-python imageio imageio-ffmpeg ffmpeg-python av runpod
+        RUN pip install torchsde einops diffusers transformers accelerate peft timm kornia scikit-image moviepy==1.0.3
     
         # Clonage des repositories nécessaires
         git clone https://github.com/comfyanonymous/ComfyUI /content/ComfyUI

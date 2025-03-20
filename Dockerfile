@@ -99,39 +99,23 @@ RUN if [ "$MODEL_TYPE" = "sdxl" ]; then \
         https://huggingface.co/black-forest-labs/FLUX.1-dev/resolve/main/ae.safetensors; \
     elif [ "$MODEL_TYPE" = "ltx" ]; then
     # Installation des bibliothèques nécessaires
-        RUN pip install xformers==0.0.28.post3 opencv-python imageio imageio-ffmpeg ffmpeg-python av runpod
-        RUN pip install torchsde einops diffusers transformers accelerate peft timm kornia scikit-image moviepy==1.0.3
-    
-        # Clonage des repositories nécessaires
-        git clone https://github.com/comfyanonymous/ComfyUI /content/ComfyUI
-        git clone https://github.com/ltdrdata/ComfyUI-Manager /content/ComfyUI/custom_nodes/ComfyUI-Manager
-        git clone -b dev https://github.com/camenduru/ComfyUI-Fluxpromptenhancer /content/ComfyUI/custom_nodes/ComfyUI-Fluxpromptenhancer
-        git clone https://github.com/Lightricks/ComfyUI-LTXVideo /content/ComfyUI/custom_nodes/ComfyUI-LTXVideo
-    
-        # Téléchargement des modèles avec aria2c
-        mkdir -p /content/ComfyUI/models/{clip,checkpoints,LLM/Flux-Prompt-Enhance}
-        
-        aria2c --console-log-level=error -c -x 16 -s 16 -k 1M \
-          https://huggingface.co/camenduru/FLUX.1-dev/resolve/main/t5xxl_fp16.safetensors \
-          -d /content/ComfyUI/models/clip -o t5xxl_fp16.safetensors
-    
-        aria2c --console-log-level=error -c -x 16 -s 16 -k 1M \
-          https://huggingface.co/Lightricks/LTX-Video/resolve/main/ltx-video-2b-v0.9.1.safetensors \
-          -d /content/ComfyUI/models/checkpoints -o ltx-video-2b-v0.9.1.safetensors
-    
-        aria2c --console-log-level=error -c -x 16 -s 16 -k 1M \
-          https://huggingface.co/mcmonkey/google_t5-v1_1-xxl_encoderonly/resolve/main/t5xxl_fp8_e4m3fn.safetensors \
-          -d /content/ComfyUI/models/checkpoints -o t5xxl_fp8_e4m3fn.safetensors
-    
-        # Téléchargement des fichiers Flux-Prompt-Enhance
-        for file in config.json generation_config.json model.safetensors special_tokens_map.json spiece.model tokenizer.json tokenizer_config.json; do
-          aria2c --console-log-level=error -c -x 16 -s 16 -k 1M \
-            https://huggingface.co/gokaygokay/Flux-Prompt-Enhance/raw/main/$file \
-            -d /content/ComfyUI/models/LLM/Flux-Prompt-Enhance -o $file
-        done
-    
-        # Installation des dépendances du module LTXVideo
-        cd /content/ComfyUI/custom_nodes/ComfyUI-LTXVideo && pip install -r requirements.txt
+      RUN pip install torch==2.5.1+cu124 torchvision==0.20.1+cu124 torchaudio==2.5.1+cu124 torchtext==0.18.0 torchdata==0.8.0 --extra-index-url https://download.pytorch.org/whl/cu124 && \
+    pip install xformers==0.0.28.post3 && \
+    pip install opencv-python imageio imageio-ffmpeg ffmpeg-python av runpod && \
+    pip install torchsde einops diffusers transformers accelerate peft timm kornia scikit-image moviepy==1.0.3 && \
+    git clone https://github.com/comfyanonymous/ComfyUI /content/ComfyUI && \
+    git clone https://github.com/ltdrdata/ComfyUI-Manager /content/ComfyUI/custom_nodes/ComfyUI-Manager && \
+    git clone -b dev https://github.com/camenduru/ComfyUI-Fluxpromptenhancer /content/ComfyUI/custom_nodes/ComfyUI-Fluxpromptenhancer && \
+    aria2c --console-log-level=error -c -x 16 -s 16 -k 1M https://huggingface.co/camenduru/FLUX.1-dev/resolve/main/t5xxl_fp16.safetensors -d /content/ComfyUI/models/clip -o t5xxl_fp16.safetensors && \
+    aria2c --console-log-level=error -c -x 16 -s 16 -k 1M https://huggingface.co/Lightricks/LTX-Video/resolve/main/ltx-video-2b-v0.9.safetensors -d /content/ComfyUI/models/checkpoints -o ltx-video-2b-v0.9.safetensors && \
+    aria2c --console-log-level=error -c -x 16 -s 16 -k 1M https://huggingface.co/gokaygokay/Flux-Prompt-Enhance/raw/main/config.json -d /content/ComfyUI/models/LLM/Flux-Prompt-Enhance -o config.json && \
+    aria2c --console-log-level=error -c -x 16 -s 16 -k 1M https://huggingface.co/gokaygokay/Flux-Prompt-Enhance/raw/main/generation_config.json -d /content/ComfyUI/models/LLM/Flux-Prompt-Enhance -o generation_config.json && \
+    aria2c --console-log-level=error -c -x 16 -s 16 -k 1M https://huggingface.co/gokaygokay/Flux-Prompt-Enhance/resolve/main/model.safetensors -d /content/ComfyUI/models/LLM/Flux-Prompt-Enhance -o model.safetensors && \
+    aria2c --console-log-level=error -c -x 16 -s 16 -k 1M https://huggingface.co/gokaygokay/Flux-Prompt-Enhance/raw/main/special_tokens_map.json -d /content/ComfyUI/models/LLM/Flux-Prompt-Enhance -o special_tokens_map.json && \
+    aria2c --console-log-level=error -c -x 16 -s 16 -k 1M https://huggingface.co/gokaygokay/Flux-Prompt-Enhance/resolve/main/spiece.model -d /content/ComfyUI/models/LLM/Flux-Prompt-Enhance -o spiece.model && \
+    aria2c --console-log-level=error -c -x 16 -s 16 -k 1M https://huggingface.co/gokaygokay/Flux-Prompt-Enhance/raw/main/tokenizer.json -d /content/ComfyUI/models/LLM/Flux-Prompt-Enhance -o tokenizer.json && \
+    aria2c --console-log-level=error -c -x 16 -s 16 -k 1M https://huggingface.co/gokaygokay/Flux-Prompt-Enhance/raw/main/tokenizer_config.json -d /content/ComfyUI/models/LLM/Flux-Prompt-Enhance -o tokenizer_config.json
+
  fi
 
 

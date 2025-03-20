@@ -97,25 +97,44 @@ RUN if [ "$MODEL_TYPE" = "sdxl" ]; then \
         https://huggingface.co/comfyanonymous/flux_text_encoders/resolve/main/t5xxl_fp8_e4m3fn.safetensors && \
       wget --header="Authorization: Bearer ${HUGGINGFACE_ACCESS_TOKEN}" -O models/vae/ae.safetensors \
         https://huggingface.co/black-forest-labs/FLUX.1-dev/resolve/main/ae.safetensors; \
-    elif [ "$MODEL_TYPE" = "ltx" ]; then \
-      # Cloner LTX repository pour les custom nodes
-      git clone https://github.com/Lightricks/ComfyUI-LTXVideo.git /comfyui/custom_nodes/ComfyUI-LTXVideo && \
-      
-      # Installer les dépendances pour LTX
-      cd /comfyui/custom_nodes/ComfyUI-LTXVideo && \
-      pip install -r requirements.txt && \
-      
-      # Créer les répertoires nécessaires
-      mkdir -p /comfyui/models/checkpoints && \
-      
-      # Télécharger le modèle LTX
-      wget --progress=bar:force -O /comfyui/models/checkpoints/ltx-video-2b-v0.9.1.safetensors \
-        https://huggingface.co/Lightricks/LTX-Video/resolve/main/ltx-video-2b-v0.9.1.safetensors && \
-      
-      # Télécharger le modèle google_t5-v1_1-xxl_encoderonly
-      wget --progress=bar:force -O /comfyui/models/checkpoints/t5xxl_fp8_e4m3fn.safetensors \
-        https://huggingface.co/mcmonkey/google_t5-v1_1-xxl_encoderonly/resolve/main/t5xxl_fp8_e4m3fn.safetensors; \
-    fi
+  elif [ "$MODEL_TYPE" = "ltx" ]; then
+    # Installation des bibliothèques nécessaires
+    pip install torch==2.5.1+cu124 torchvision==0.20.1+cu124 torchaudio==2.5.1+cu124 torchtext==0.18.0 torchdata==0.8.0 --extra-index-url https://download.pytorch.org/whl/cu124
+    pip install xformers==0.0.28.post3 opencv-python imageio imageio-ffmpeg ffmpeg-python av runpod
+    pip install torchsde einops diffusers transformers accelerate peft timm kornia scikit-image moviepy==1.0.3
+
+    # Clonage des repositories nécessaires
+    git clone https://github.com/comfyanonymous/ComfyUI /content/ComfyUI
+    git clone https://github.com/ltdrdata/ComfyUI-Manager /content/ComfyUI/custom_nodes/ComfyUI-Manager
+    git clone -b dev https://github.com/camenduru/ComfyUI-Fluxpromptenhancer /content/ComfyUI/custom_nodes/ComfyUI-Fluxpromptenhancer
+    git clone https://github.com/Lightricks/ComfyUI-LTXVideo /content/ComfyUI/custom_nodes/ComfyUI-LTXVideo
+
+    # Téléchargement des modèles avec aria2c
+    mkdir -p /content/ComfyUI/models/{clip,checkpoints,LLM/Flux-Prompt-Enhance}
+    
+    aria2c --console-log-level=error -c -x 16 -s 16 -k 1M \
+      https://huggingface.co/camenduru/FLUX.1-dev/resolve/main/t5xxl_fp16.safetensors \
+      -d /content/ComfyUI/models/clip -o t5xxl_fp16.safetensors
+
+    aria2c --console-log-level=error -c -x 16 -s 16 -k 1M \
+      https://huggingface.co/Lightricks/LTX-Video/resolve/main/ltx-video-2b-v0.9.1.safetensors \
+      -d /content/ComfyUI/models/checkpoints -o ltx-video-2b-v0.9.1.safetensors
+
+    aria2c --console-log-level=error -c -x 16 -s 16 -k 1M \
+      https://huggingface.co/mcmonkey/google_t5-v1_1-xxl_encoderonly/resolve/main/t5xxl_fp8_e4m3fn.safetensors \
+      -d /content/ComfyUI/models/checkpoints -o t5xxl_fp8_e4m3fn.safetensors
+
+    # Téléchargement des fichiers Flux-Prompt-Enhance
+    for file in config.json generation_config.json model.safetensors special_tokens_map.json spiece.model tokenizer.json tokenizer_config.json; do
+      aria2c --console-log-level=error -c -x 16 -s 16 -k 1M \
+        https://huggingface.co/gokaygokay/Flux-Prompt-Enhance/raw/main/$file \
+        -d /content/ComfyUI/models/LLM/Flux-Prompt-Enhance -o $file
+    done
+
+    # Installation des dépendances du module LTXVideo
+    cd /content/ComfyUI/custom_nodes/ComfyUI-LTXVideo && pip install -r requirements.txt
+fi
+
 
 # Stage 3: Final image
 FROM base as final

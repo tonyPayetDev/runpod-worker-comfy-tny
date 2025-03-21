@@ -10,7 +10,7 @@ ENV PYTHONUNBUFFERED=1
 # Speed up some cmake builds
 ENV CMAKE_BUILD_PARALLEL_LEVEL=8
 
-# Install Python, git and other necessary tools 
+# Install Python, git and other necessary tools
 RUN apt-get update && apt-get install -y \
     python3.10 \
     python3-pip \
@@ -18,10 +18,8 @@ RUN apt-get update && apt-get install -y \
     wget \
     libgl1 \
     && ln -sf /usr/bin/python3.10 /usr/bin/python \
-    && ln -sf /usr/bin/pip3 /usr/bin/pip
-
-# Clean up to reduce image size
-RUN apt-get autoremove -y && apt-get clean -y && rm -rf /var/lib/apt/lists/*
+    && ln -sf /usr/bin/pip3 /usr/bin/pip \
+    && apt-get autoremove -y && apt-get clean -y && rm -rf /var/lib/apt/lists/*
 
 # Install comfy-cli
 RUN pip install comfy-cli
@@ -36,94 +34,41 @@ WORKDIR /comfyui
 RUN pip install runpod requests
 
 # Support for the network volume
-ADD src/extra_model_paths.yaml ./
-
-# Go back to the root
-WORKDIR /
+COPY src/extra_model_paths.yaml ./
 
 # Add scripts
-ADD src/start.sh src/restore_snapshot.sh src/rp_handler.py test_input.json ./
+COPY src/start.sh src/restore_snapshot.sh src/rp_handler.py test_input.json ./
 RUN chmod +x /start.sh /restore_snapshot.sh
 
 # Optionally copy the snapshot file
-ADD *snapshot*.json /
+COPY *snapshot*.json /
 
 # Restore the snapshot to install custom nodes
 RUN /restore_snapshot.sh
 
-# Start container
-CMD ["/start.sh"]
+# Install additional dependencies and tools
+RUN apt-get update && apt-get install -y \
+    software-properties-common build-essential \
+    libglib2.0-0 zlib1g-dev libncurses5-dev libgdbm-dev libnss3-dev libssl-dev \
+    libreadline-dev libffi-dev && \
+    add-apt-repository -y ppa:git-core/ppa && apt update -y && \
+    apt install -y python-is-python3 sudo nano aria2 curl git git-lfs unzip unrar ffmpeg && \
+    aria2c --console-log-level=error -c -x 16 -s 16 -k 1M https://developer.download.nvidia.com/compute/cuda/12.6.2/local_installers/cuda_12.6.2_560.35.03_linux.run -d /content -o cuda_12.6.2_560.35.03_linux.run && \
+    sh cuda_12.6.2_560.35.03_linux.run --silent --toolkit && \
+    echo "/usr/local/cuda/lib64" >> /etc/ld.so.conf && ldconfig
 
-# Stage 2: Download models
-FROM base as downloader
+# Install python dependencies
+RUN pip install torch==2.5.1+cu124 torchvision==0.20.1+cu124 torchaudio==2.5.1+cu124 \
+    torchtext==0.18.0 torchdata==0.8.0 --extra-index-url https://download.pytorch.org/whl/cu124 && \
+    pip install xformers==0.0.28.post3 opencv-python imageio imageio-ffmpeg ffmpeg-python \
+    torchsde diffusers accelerate peft timm scikit-image matplotlib numpy==1.25.0 einops transformers==4.28.1 \
+    tokenizers==0.13.3 sentencepiece aiohttp==3.11.8 yarl==1.18.0 pyyaml Pillow scipy tqdm psutil kornia==0.7.1 \
+    spandrel soundfile av comfyui-frontend-package==1.10.17
 
-ARG HUGGINGFACE_ACCESS_TOKEN
-ARG MODEL_TYPE
+# Clone ComfyUI repo and download necessary models
+RUN git clone https://github.com/comfyanonymous/ComfyUI /content/ComfyUI && \
+    aria2c --console-log-level=error -c -x 16 -s 16 -k 1M https://huggingface.co/Lightricks/LTX-Video/resolve/main/ltx-video-2b-v0.9.5.safetensors -d /content/ComfyUI/models/checkpoints -o ltx-video-2b-v0.9.5.safetensors && \
+    aria2c --console-log-level=error -c -x 16 -s 16 -k 1M https://huggingface.co/Comfy-Org/mochi_preview_repackaged/resolve/main/split_files/text_encoders/t5xxl_fp16.safetensors -d /content/ComfyUI/models/text_encoders -o t5xxl_fp16.safetensors
 
-# Change working directory to ComfyUI
-WORKDIR /comfyui
-
-# Create necessary directories
-RUN mkdir -p models/checkpoints models/vae
-
-
-# Télécharger les modèles en fonction du type
-RUN if [ "$MODEL_TYPE" = "sdxl" ]; then \
-      wget --progress=bar:force -O models/checkpoints/sd_xl_base_1.0.safetensors \
-        https://huggingface.co/stabilityai/stable-diffusion-xl-base-1.0/resolve/main/sd_xl_base_1.0.safetensors && \
-      wget --progress=bar:force -O models/vae/sdxl_vae.safetensors \
-        https://huggingface.co/stabilityai/sdxl-vae/resolve/main/sdxl_vae.safetensors && \
-      wget --progress=bar:force -O models/vae/sdxl-vae-fp16-fix.safetensors \
-        https://huggingface.co/madebyollin/sdxl-vae-fp16-fix/resolve/main/sdxl_vae.safetensors; \
-    elif [ "$MODEL_TYPE" = "sd3" ]; then \
-      wget --header="Authorization: Bearer ${HUGGINGFACE_ACCESS_TOKEN}" --progress=bar:force \
-        -O models/checkpoints/sd3_medium_incl_clips_t5xxlfp8.safetensors \
-        https://huggingface.co/stabilityai/stable-diffusion-3-medium/resolve/main/sd3_medium_incl_clips_t5xxlfp8.safetensors; \
-    elif [ "$MODEL_TYPE" = "flux1-schnell" ]; then \
-      wget --progress=bar:force -O models/unet/flux1-schnell.safetensors \
-        https://huggingface.co/black-forest-labs/FLUX.1-schnell/resolve/main/flux1-schnell.safetensors && \
-      wget --progress=bar:force -O models/clip/clip_l.safetensors \
-        https://huggingface.co/comfyanonymous/flux_text_encoders/resolve/main/clip_l.safetensors && \
-      wget --progress=bar:force -O models/clip/t5xxl_fp8_e4m3fn.safetensors \
-        https://huggingface.co/comfyanonymous/flux_text_encoders/resolve/main/t5xxl_fp8_e4m3fn.safetensors && \
-      wget --progress=bar:force -O models/vae/ae.safetensors \
-        https://huggingface.co/black-forest-labs/FLUX.1-schnell/resolve/main/ae.safetensors; \
-    elif [ "$MODEL_TYPE" = "flux1-dev" ]; then \
-      wget --header="Authorization: Bearer ${HUGGINGFACE_ACCESS_TOKEN}" -O models/unet/flux1-dev.safetensors \
-        https://huggingface.co/black-forest-labs/FLUX.1-dev/resolve/main/flux1-dev.safetensors && \
-      wget -O models/clip/clip_l.safetensors \
-        https://huggingface.co/comfyanonymous/flux_text_encoders/resolve/main/clip_l.safetensors && \
-      wget -O models/clip/t5xxl_fp8_e4m3fn.safetensors \
-        https://huggingface.co/comfyanonymous/flux_text_encoders/resolve/main/t5xxl_fp8_e4m3fn.safetensors && \
-      wget --header="Authorization: Bearer ${HUGGINGFACE_ACCESS_TOKEN}" -O models/vae/ae.safetensors \
-        https://huggingface.co/black-forest-labs/FLUX.1-dev/resolve/main/ae.safetensors; \
-    elif [ "$MODEL_TYPE" = "ltx" ]; then
-    # Installation des bibliothèques nécessaires
-      RUN pip install torch==2.5.1+cu124 torchvision==0.20.1+cu124 torchaudio==2.5.1+cu124 torchtext==0.18.0 torchdata==0.8.0 --extra-index-url https://download.pytorch.org/whl/cu124 && \
-    pip install xformers==0.0.28.post3 && \
-    pip install opencv-python imageio imageio-ffmpeg ffmpeg-python av runpod && \
-    pip install torchsde einops diffusers transformers accelerate peft timm kornia scikit-image moviepy==1.0.3 && \
-    git clone https://github.com/comfyanonymous/ComfyUI /content/ComfyUI && \
-    git clone https://github.com/ltdrdata/ComfyUI-Manager /content/ComfyUI/custom_nodes/ComfyUI-Manager && \
-    git clone -b dev https://github.com/camenduru/ComfyUI-Fluxpromptenhancer /content/ComfyUI/custom_nodes/ComfyUI-Fluxpromptenhancer && \
-    aria2c --console-log-level=error -c -x 16 -s 16 -k 1M https://huggingface.co/camenduru/FLUX.1-dev/resolve/main/t5xxl_fp16.safetensors -d /content/ComfyUI/models/clip -o t5xxl_fp16.safetensors && \
-    aria2c --console-log-level=error -c -x 16 -s 16 -k 1M https://huggingface.co/Lightricks/LTX-Video/resolve/main/ltx-video-2b-v0.9.safetensors -d /content/ComfyUI/models/checkpoints -o ltx-video-2b-v0.9.safetensors && \
-    aria2c --console-log-level=error -c -x 16 -s 16 -k 1M https://huggingface.co/gokaygokay/Flux-Prompt-Enhance/raw/main/config.json -d /content/ComfyUI/models/LLM/Flux-Prompt-Enhance -o config.json && \
-    aria2c --console-log-level=error -c -x 16 -s 16 -k 1M https://huggingface.co/gokaygokay/Flux-Prompt-Enhance/raw/main/generation_config.json -d /content/ComfyUI/models/LLM/Flux-Prompt-Enhance -o generation_config.json && \
-    aria2c --console-log-level=error -c -x 16 -s 16 -k 1M https://huggingface.co/gokaygokay/Flux-Prompt-Enhance/resolve/main/model.safetensors -d /content/ComfyUI/models/LLM/Flux-Prompt-Enhance -o model.safetensors && \
-    aria2c --console-log-level=error -c -x 16 -s 16 -k 1M https://huggingface.co/gokaygokay/Flux-Prompt-Enhance/raw/main/special_tokens_map.json -d /content/ComfyUI/models/LLM/Flux-Prompt-Enhance -o special_tokens_map.json && \
-    aria2c --console-log-level=error -c -x 16 -s 16 -k 1M https://huggingface.co/gokaygokay/Flux-Prompt-Enhance/resolve/main/spiece.model -d /content/ComfyUI/models/LLM/Flux-Prompt-Enhance -o spiece.model && \
-    aria2c --console-log-level=error -c -x 16 -s 16 -k 1M https://huggingface.co/gokaygokay/Flux-Prompt-Enhance/raw/main/tokenizer.json -d /content/ComfyUI/models/LLM/Flux-Prompt-Enhance -o tokenizer.json && \
-    aria2c --console-log-level=error -c -x 16 -s 16 -k 1M https://huggingface.co/gokaygokay/Flux-Prompt-Enhance/raw/main/tokenizer_config.json -d /content/ComfyUI/models/LLM/Flux-Prompt-Enhance -o tokenizer_config.json
-
- fi
-
-
-# Stage 3: Final image
-FROM base as final
-
-# Copy models from stage 2 to the final image test
-COPY --from=downloader /comfyui/models /comfyui/models
-
-# Start container
+WORKDIR /content/ComfyUI
 CMD ["/start.sh"]

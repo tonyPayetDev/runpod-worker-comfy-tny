@@ -38,7 +38,7 @@ COPY src/extra_model_paths.yaml ./
 
 # Add scripts
 COPY src/start.sh src/restore_snapshot.sh src/rp_handler.py test_input.json ./
-RUN chmod 755 /start.sh /restore_snapshot.sh
+# RUN chmod 755 /start.sh /restore_snapshot.sh
 
 # Optionally copy the snapshot file
 COPY 2025-03-20_20-03-04_snapshot.json /

@@ -41,6 +41,6 @@ RUN pip install torch==2.5.1+cu124 torchvision==0.20.1+cu124 torchaudio==2.5.1+c
     aria2c --console-log-level=error -c -x 16 -s 16 -k 1M https://huggingface.co/gokaygokay/Flux-Prompt-Enhance/raw/main/tokenizer_config.json -d /content/ComfyUI/models/LLM/Flux-Prompt-Enhance -o tokenizer_config.json
 ADD src/start.sh src/restore_snapshot.sh src/rp_handler.py test_input.json ./
 
-COPY ./worker_runpod.py /content/ComfyUI/worker_runpod.py
+COPY ./rp_handler.py /content/ComfyUI/rp_handler.py
 WORKDIR /content/ComfyUI
 CMD ["/start.sh"]

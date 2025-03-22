@@ -1,6 +1,9 @@
-# Stage 1: Base image with common dependencies
-FROM nvidia/cuda:11.8.0-cudnn8-runtime-ubuntu22.04 as base
+FROM ubuntu:22.04
 
+WORKDIR /content
+
+ENV DEBIAN_FRONTEND=noninteractive
+ENV PATH="/home/camenduru/.local/bin:/usr/local/cuda/bin:${PATH}"
 # Prevents prompts from packages asking for user input during installation
 ENV DEBIAN_FRONTEND=noninteractive
 # Prefer binary wheels over source distributions for faster pip installations
@@ -10,15 +13,23 @@ ENV PYTHONUNBUFFERED=1
 # Speed up some cmake builds
 ENV CMAKE_BUILD_PARALLEL_LEVEL=8
 
-# Install Python, git and other necessary tools
-RUN apt-get update && apt-get install -y \
-    python3.10 \
-    python3-pip \
-    git \
-    wget \
-    libgl1 \
-    && ln -sf /usr/bin/python3.10 /usr/bin/python \
-    && ln -sf /usr/bin/pip3 /usr/bin/pip
+# Stage 2: Install additional dependencies
+RUN apt update -y && apt install -y software-properties-common build-essential \
+    libgl1 libglib2.0-0 zlib1g-dev libncurses5-dev libgdbm-dev libnss3-dev libssl-dev libreadline-dev libffi-dev && \
+    add-apt-repository -y ppa:git-core/ppa && apt update -y && \
+    apt install -y python-is-python3 python3-pip sudo nano aria2 curl wget git git-lfs unzip unrar ffmpeg && \
+    aria2c --console-log-level=error -c -x 16 -s 16 -k 1M https://developer.download.nvidia.com/compute/cuda/12.6.2/local_installers/cuda_12.6.2_560.35.03_linux.run -d /content -o cuda_12.6.2_560.35.03_linux.run && sh cuda_12.6.2_560.35.03_linux.run --silent --toolkit && \
+    echo "/usr/local/cuda/lib64" >> /etc/ld.so.conf && ldconfig && \
+    git clone https://github.com/aristocratos/btop /content/btop && cd /content/btop && make && make install && \
+    adduser --disabled-password --gecos '' camenduru && \
+    adduser camenduru sudo && \
+    echo '%sudo ALL=(ALL) NOPASSWD:ALL' >> /etc/sudoers && \
+    chown -R camenduru:camenduru /content && \
+    chmod -R 777 /content && \
+    chown -R camenduru:camenduru /home && \
+    chmod -R 777 /home
+
+USER camenduru
 
 # Clean up to reduce image size
 RUN apt-get autoremove -y && apt-get clean -y && rm -rf /var/lib/apt/lists/*
@@ -51,23 +62,7 @@ ADD *snapshot*.json /
 # Restore the snapshot to install custom nodes
 RUN /restore_snapshot.sh
 
-# Stage 2: Install additional dependencies
-RUN apt update -y && apt install -y software-properties-common build-essential \
-    libgl1 libglib2.0-0 zlib1g-dev libncurses5-dev libgdbm-dev libnss3-dev libssl-dev libreadline-dev libffi-dev && \
-    add-apt-repository -y ppa:git-core/ppa && apt update -y && \
-    apt install -y python-is-python3 python3-pip sudo nano aria2 curl wget git git-lfs unzip unrar ffmpeg && \
-    aria2c --console-log-level=error -c -x 16 -s 16 -k 1M https://developer.download.nvidia.com/compute/cuda/12.6.2/local_installers/cuda_12.6.2_560.35.03_linux.run -d /content -o cuda_12.6.2_560.35.03_linux.run && sh cuda_12.6.2_560.35.03_linux.run --silent --toolkit && \
-    echo "/usr/local/cuda/lib64" >> /etc/ld.so.conf && ldconfig && \
-    git clone https://github.com/aristocratos/btop /content/btop && cd /content/btop && make && make install && \
-    adduser --disabled-password --gecos '' camenduru && \
-    adduser camenduru sudo && \
-    echo '%sudo ALL=(ALL) NOPASSWD:ALL' >> /etc/sudoers && \
-    chown -R camenduru:camenduru /content && \
-    chmod -R 777 /content && \
-    chown -R camenduru:camenduru /home && \
-    chmod -R 777 /home
 
-USER camenduru
 
 RUN pip install torch==2.5.1+cu124 torchvision==0.20.1+cu124 torchaudio==2.5.1+cu124 torchtext==0.18.0 torchdata==0.8.0 --extra-index-url https://download.pytorch.org/whl/cu124 && \
     pip install xformers==0.0.28.post3 && \

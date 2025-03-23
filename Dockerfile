@@ -19,10 +19,7 @@ RUN apt-get update && apt-get install -y \
     libgl1 \
     && ln -sf /usr/bin/python3.10 /usr/bin/python \
     && ln -sf /usr/bin/pip3 /usr/bin/pip
-RUN pip install opencv-python imageio imageio-ffmpeg ffmpeg-python av runpod && \
-    pip install torchsde einops diffusers transformers accelerate peft timm kornia scikit-image moviepy==1.0.3 && \
-    git clone https://github.com/comfyanonymous/ComfyUI /content/ComfyUI && \
-    git clone https://github.com/ltdrdata/ComfyUI-Manager /content/ComfyUI/custom_nodes/ComfyUI-Manager && \
+RUN pip install opencv-python
 # Clean up to reduce image size
 RUN apt-get autoremove -y && apt-get clean -y && rm -rf /var/lib/apt/lists/*
 

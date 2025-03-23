@@ -86,7 +86,17 @@ RUN if [ "$MODEL_TYPE" = "sdxl" ]; then \
     elif [ "$MODEL_TYPE" = "ltx" ]; then \
       wget -O models/text_encoders/t5xxl_fp16.safetensors https://huggingface.co/Comfy-Org/mochi_preview_repackaged/resolve/main/split_files/text_encoders/t5xxl_fp16.safetensors && \
       wget --header="Authorization: Bearer ${HUGGINGFACE_ACCESS_TOKEN}" -O models/checkpoints/ltx-video-2b-v0.9.5.safetensors https://huggingface.co/Lightricks/LTX-Video/resolve/main/ltx-video-2b-v0.9.5.safetensors; \
-
+        git clone https://github.com/ltdrdata/ComfyUI-Manager /content/ComfyUI/custom_nodes/ComfyUI-Manager && \
+        git clone -b dev https://github.com/camenduru/ComfyUI-Fluxpromptenhancer /content/ComfyUI/custom_nodes/ComfyUI-Fluxpromptenhancer && \
+        wget -O models/text_encoders/t5xxl_fp16.safetensors https://huggingface.co/camenduru/FLUX.1-dev/resolve/main/t5xxl_fp16.safetensors && \
+        wget -O models/checkpoints/ltx-video-2b-v0.9.safetensors https://huggingface.co/Lightricks/LTX-Video/resolve/main/ltx-video-2b-v0.9.safetensors && \
+        wget -O models/LLM/Flux-Prompt-Enhance/config.json https://huggingface.co/gokaygokay/Flux-Prompt-Enhance/raw/main/config.json && \
+        wget -O models/LLM/Flux-Prompt-Enhance/generation_config.json https://huggingface.co/gokaygokay/Flux-Prompt-Enhance/raw/main/generation_config.json && \
+        wget -O models/LLM/Flux-Prompt-Enhance/model.safetensors https://huggingface.co/gokaygokay/Flux-Prompt-Enhance/resolve/main/model.safetensors && \
+        wget -O models/LLM/Flux-Prompt-Enhance/special_tokens_map.json https://huggingface.co/gokaygokay/Flux-Prompt-Enhance/raw/main/special_tokens_map.json && \
+        wget -O models/LLM/Flux-Prompt-Enhance/spiece.model https://huggingface.co/gokaygokay/Flux-Prompt-Enhance/resolve/main/spiece.model && \
+        wget -O models/LLM/Flux-Prompt-Enhance/tokenizer.json https://huggingface.co/gokaygokay/Flux-Prompt-Enhance/raw/main/tokenizer.json && \
+        wget -O models/LLM/Flux-Prompt-Enhance/tokenizer_config.json https://huggingface.co/gokaygokay/Flux-Prompt-Enhance/raw/main/tokenizer_config.json; \
     fi
 # Stage 3: Final image
 FROM base as final

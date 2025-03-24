@@ -9,6 +9,9 @@ ENV PIP_PREFER_BINARY=1
 ENV PYTHONUNBUFFERED=1 
 # Speed up some cmake builds
 ENV CMAKE_BUILD_PARALLEL_LEVEL=8
+ENV SUPABASE_URL="${SUPABASE_URL}"
+ENV SUPA_ROLE_TOKEN="${SUPA_ROLE_TOKEN}"
+ENV SUPABASE_BUCKET="${SUPABASE_BUCKET}"
 
 # Install Python, git and other necessary tools
 RUN apt-get update && apt-get install -y \
@@ -17,6 +20,7 @@ RUN apt-get update && apt-get install -y \
     git \
     wget \
     libgl1 \
+    ffmpeg \
     && ln -sf /usr/bin/python3.10 /usr/bin/python \
     && ln -sf /usr/bin/pip3 /usr/bin/pip
 # Clean up to reduce image size

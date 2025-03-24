@@ -24,6 +24,35 @@ COMFY_HOST = "127.0.0.1:8188"
 REFRESH_WORKER = os.environ.get("REFRESH_WORKER", "false").lower() == "true"
 
 
+# Variables de connexion à Supabase 
+SUPABASE_URL = s.getenv("SUPABASE_URL", "default_value")
+SUPABASE_API_KEY = os.getenv("SUPA_ROLE_TOKEN", "default_value")
+SUPABASE_BUCKET = os.getenv("SUPABASE_BUCKET", "default_value")
+
+# Fonction pour encoder une vidéo en base64
+def encode_video_to_base64(file_path):
+    with open(file_path, "rb") as video_file:
+        video_base64 = base64.b64encode(video_file.read()).decode('utf-8')
+    return video_base64
+
+# Fonction d'envoi de la vidéo encodée à Supabase
+def upload_to_supabase(video_base64, file_name):
+    url = f"{SUPABASE_URL}/storage/v1/object/{SUPABASE_BUCKET}/{file_name}"
+    
+    headers = {
+        "Authorization": f"Bearer {SUPABASE_API_KEY}",
+        "Content-Type": "application/octet-stream",
+    }
+    
+    # Envoi de la vidéo encodée en base64
+    response = requests.put(url, headers=headers, data=base64.b64decode(video_base64))
+
+    if response.status_code == 200:
+        print("Vidéo uploadée avec succès !")
+        return response.json()
+    else:
+        print(f"Erreur lors de l'upload : {response.status_code}, {response.text}")
+        return {"error": response.text}
 def validate_input(job_input):
     """
     Validates the input for the handler function.
@@ -248,29 +277,33 @@ def process_output_images(outputs, job_id):
 
     # The image is in the output folder
     if os.path.exists(local_image_path):
-        if os.environ.get("BUCKET_ENDPOINT_URL", False):
-            # URL to image in AWS S3
-            image = rp_upload.upload_image(job_id, local_image_path)
-            print(
-                "runpod-worker-comfy - the image was generated and uploaded to AWS S3"
-            )
+        if os.environ.get("SUPABASE_URL"):  # Vérification de l'URL Supabase
+            try:
+                # URL vers l'image dans AWS S3 ou Supabase
+                image = upload_to_supabase(local_image_path, file_name)  # Assurez-vous que cette fonction est correcte
+                print("runpod-worker-comfy - l'image a été générée et téléchargée sur Supabase")
+            except Exception as e:
+                print(f"runpod-worker-comfy - une erreur est survenue lors de l'upload sur Supabase: {str(e)}")
+                return {
+                    "status": "error",
+                    "message": f"Erreur lors de l'upload sur Supabase: {str(e)}",
+                }
         else:
-            # base64 image
-            image = base64_encode(local_image_path)
-            print(
-                "runpod-worker-comfy - the image was generated and converted to base64"
-            )
-
+            # Image en base64
+            image = base64_encode(local_image_path)  # Vérifiez cette fonction aussi
+            print("runpod-worker-comfy - l'image a été générée et convertie en base64")
+    
         return {
             "status": "success",
             "message": image,
         }
     else:
-        print("runpod-worker-comfy - the image does not exist in the output folder")
+        print(f"runpod-worker-comfy - l'image n'existe pas dans le dossier de sortie: {local_image_path}")
         return {
             "status": "error",
-            "message": f"the image does not exist in the specified output folder: {local_image_path}",
+            "message": f"L'image n'existe pas dans le dossier spécifié: {local_image_path}",
         }
+
 
 
 def handler(job):

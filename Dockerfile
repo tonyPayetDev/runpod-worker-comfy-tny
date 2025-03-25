@@ -57,7 +57,7 @@ RUN chmod +x /start.sh /restore_snapshot.sh
 ADD *snapshot*.json / || true
 
 # Restaurer le snapshot pour installer les nodes personnalisés
-# RUN /restore_snapshot.sh
+RUN /restore_snapshot.sh
 
 # Démarrer le conteneur
 CMD ["/start.sh"]

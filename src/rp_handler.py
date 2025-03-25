@@ -25,7 +25,7 @@ REFRESH_WORKER = os.environ.get("REFRESH_WORKER", "false").lower() == "true"
 
 
 # Variables de connexion à Supabase 
-SUPABASE_URL = s.getenv("SUPABASE_URL", "default_value")
+SUPABASE_URL = os.getenv("SUPABASE_URL", "default_value")
 SUPABASE_API_KEY = os.getenv("SUPA_ROLE_TOKEN", "default_value")
 SUPABASE_BUCKET = os.getenv("SUPABASE_BUCKET", "default_value")
 
@@ -279,6 +279,8 @@ def process_output_images(outputs, job_id):
     if os.path.exists(local_image_path):
         if os.environ.get("SUPABASE_URL"):  # Vérification de l'URL Supabase
             try:
+                file_name = os.path.basename(output_images)
+                image = upload_to_supabase(base64_encode(local_image_path), file_name)
                 # URL vers l'image dans AWS S3 ou Supabase
                 image = upload_to_supabase(local_image_path, file_name)  # Assurez-vous que cette fonction est correcte
                 print("runpod-worker-comfy - l'image a été générée et téléchargée sur Supabase")

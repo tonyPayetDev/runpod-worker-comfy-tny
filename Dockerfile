@@ -9,6 +9,8 @@ ENV PIP_PREFER_BINARY=1
 ENV PYTHONUNBUFFERED=1 
 # Speed up some cmake builds
 ENV CMAKE_BUILD_PARALLEL_LEVEL=8
+
+# Variables d'environnement Supabase
 ENV SUPABASE_URL="${SUPABASE_URL}"
 ENV SUPA_ROLE_TOKEN="${SUPA_ROLE_TOKEN}"
 ENV SUPABASE_BUCKET="${SUPABASE_BUCKET}"
@@ -16,48 +18,48 @@ ENV SUPABASE_BUCKET="${SUPABASE_BUCKET}"
 ARG MODEL_TYPE
 ENV MODEL_TYPE=${MODEL_TYPE}
 
-# Install Python, git and other necessary tools
+# Install Python, git et autres outils nécessaires
 RUN apt-get update && apt-get install -y \
     python3.10 \
     python3-pip \
     git \
     wget \
     libgl1 \
+    ffmpeg \
+    libsm6 \
     && ln -sf /usr/bin/python3.10 /usr/bin/python \
-    && ln -sf /usr/bin/pip3 /usr/bin/pip
-# Clean up to reduce image size
-RUN apt-get autoremove -y && apt-get clean -y && rm -rf /var/lib/apt/lists/*
+    && ln -sf /usr/bin/pip3 /usr/bin/pip \
+    && apt-get autoremove -y && apt-get clean -y && rm -rf /var/lib/apt/lists/*
 
-# Install comfy-cli
-RUN pip install comfy-cli
-RUN pip install opencv-python
+# Install comfy-cli et autres dépendances
+RUN pip install comfy-cli opencv-python
 
 # Install ComfyUI
 RUN /usr/bin/yes | comfy --workspace /comfyui install --cuda-version 11.8 --nvidia --version 0.3.26
 
-# Change working directory to ComfyUI
+# Changer de répertoire vers ComfyUI
 WORKDIR /comfyui
 
-# Install runpod
+# Install runpod et requests
 RUN pip install runpod requests
 
-# Support for the network volume
+# Support pour le volume réseau
 ADD src/extra_model_paths.yaml ./
 
-# Go back to the root
+# Retour à la racine
 WORKDIR /
 
-# Add scripts
+# Ajouter les scripts
 ADD src/start.sh src/restore_snapshot.sh src/rp_handler.py test_input.json ./
 RUN chmod +x /start.sh /restore_snapshot.sh
 
-# Optionally copy the snapshot file
-ADD *snapshot*.json /
+# Optionnellement, copier le snapshot
+ADD *snapshot*.json / || true
 
-# Restore the snapshot to install custom nodes
-#RUN /restore_snapshot.sh
+# Restaurer le snapshot pour installer les nodes personnalisés
+# RUN /restore_snapshot.sh
 
-# Start container
+# Démarrer le conteneur
 CMD ["/start.sh"]
 
 # Stage 2: Download models
@@ -66,15 +68,15 @@ FROM base as downloader
 ARG HUGGINGFACE_ACCESS_TOKEN
 ARG MODEL_TYPE
 
-# Change working directory to ComfyUI
+# Changer de répertoire vers ComfyUI
 WORKDIR /comfyui
 
-# Create necessary directories
-RUN mkdir -p models/checkpoints models/vae
+# Créer les dossiers nécessaires
+RUN mkdir -p models/checkpoints models/vae models/unet models/clip
 
-RUN echo "TP LTX MODEL_TYPE is: $MODEL_TYPE"
+RUN echo "MODEL_TYPE is: $MODEL_TYPE"
 
-# Download checkpoints/vae/LoRA to include in image based on model type
+# Téléchargement des modèles selon MODEL_TYPE
 # RUN if [ "$MODEL_TYPE" = "sdxl" ]; then \
 #       wget -O models/checkpoints/sd_xl_base_1.0.safetensors https://huggingface.co/stabilityai/stable-diffusion-xl-base-1.0/resolve/main/sd_xl_base_1.0.safetensors && \
 #       wget -O models/vae/sdxl_vae.safetensors https://huggingface.co/stabilityai/sdxl-vae/resolve/main/sdxl_vae.safetensors && \
@@ -92,16 +94,15 @@ RUN echo "TP LTX MODEL_TYPE is: $MODEL_TYPE"
 #       wget -O models/clip/t5xxl_fp8_e4m3fn.safetensors https://huggingface.co/comfyanonymous/flux_text_encoders/resolve/main/t5xxl_fp8_e4m3fn.safetensors && \
 #       wget --header="Authorization: Bearer ${HUGGINGFACE_ACCESS_TOKEN}" -O models/vae/ae.safetensors https://huggingface.co/black-forest-labs/FLUX.1-dev/resolve/main/ae.safetensors; \
 #     elif [ "$MODEL_TYPE" = "ltx" ]; then \
-#       wget --header="Authorization: Bearer ${HUGGINGFACE_ACCESS_TOKEN}" -O models/checkpoints/ltx-video-2b-v0.9.5.safetensors https://huggingface.co/Lightricks/LTX-Video/resolve/main/ltx-video-2b-v0.9.5.safetensors && \
-#       wget --header="Authorization: Bearer ${HUGGINGFACE_ACCESS_TOKEN}" -O  models/clip/t5xxl_fp16.safetensors https://huggingface.co/Comfy-Org/mochi_preview_repackaged/resolve/main/split_files/text_encoders/t5xxl_fp16.safetensors; \
+
 #     fi
-RUN  wget --header="Authorization: Bearer ${HUGGINGFACE_ACCESS_TOKEN}" -O models/checkpoints/ltx-video-2b-v0.9.5.safetensors https://huggingface.co/Lightricks/LTX-Video/resolve/main/ltx-video-2b-v0.9.5.safetensors && \
-     wget --header="Authorization: Bearer ${HUGGINGFACE_ACCESS_TOKEN}" -O  models/clip/t5xxl_fp16.safetensors https://huggingface.co/Comfy-Org/mochi_preview_repackaged/resolve/main/split_files/text_encoders/t5xxl_fp16.safetensors; \
+ RUN  wget --header="Authorization: Bearer ${HUGGINGFACE_ACCESS_TOKEN}" -O models/checkpoints/ltx-video-2b-v0.9.5.safetensors https://huggingface.co/Lightricks/LTX-Video/resolve/main/ltx-video-2b-v0.9.5.safetensors && \
+      wget --header="Authorization: Bearer ${HUGGINGFACE_ACCESS_TOKEN}" -O models/clip/t5xxl_fp16.safetensors https://huggingface.co/Comfy-Org/mochi_preview_repackaged/resolve/main/split_files/text_encoders/t5xxl_fp16.safetensors; \
 # Stage 3: Final image
 FROM base as final
 
-# Copy models from stage 2 to the final image
+# Copier les modèles téléchargés depuis la stage 2 vers l'image finale
 COPY --from=downloader /comfyui/models /comfyui/models
 
-# Start container
+# Démarrer le conteneur
 CMD ["/start.sh"]

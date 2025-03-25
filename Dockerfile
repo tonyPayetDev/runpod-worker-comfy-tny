@@ -12,8 +12,10 @@ ENV CMAKE_BUILD_PARALLEL_LEVEL=8
 ENV SUPABASE_URL="${SUPABASE_URL}"
 ENV SUPA_ROLE_TOKEN="${SUPA_ROLE_TOKEN}"
 ENV SUPABASE_BUCKET="${SUPABASE_BUCKET}"
+
 ARG MODEL_TYPE
 ENV MODEL_TYPE=${MODEL_TYPE}
+
 # Install Python, git and other necessary tools
 RUN apt-get update && apt-get install -y \
     python3.10 \

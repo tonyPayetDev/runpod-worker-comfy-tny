@@ -15,8 +15,7 @@ ENV SUPABASE_URL="${SUPABASE_URL}"
 ENV SUPA_ROLE_TOKEN="${SUPA_ROLE_TOKEN}"
 ENV SUPABASE_BUCKET="${SUPABASE_BUCKET}"
 
-ARG MODEL_TYPE
-ENV MODEL_TYPE=${MODEL_TYPE}
+
 
 # Install Python, git et autres outils nécessaires
 RUN apt-get update && apt-get install -y \
@@ -67,6 +66,7 @@ FROM base as downloader
 
 ARG HUGGINGFACE_ACCESS_TOKEN
 ARG MODEL_TYPE
+ENV MODEL_TYPE=${MODEL_TYPE}
 
 # Changer de répertoire vers ComfyUI
 WORKDIR /comfyui

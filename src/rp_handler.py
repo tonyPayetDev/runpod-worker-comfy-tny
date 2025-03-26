@@ -9,7 +9,7 @@ import requests
 import base64
 from io import BytesIO
 
-# Time to wait between API check attempts in milliseconds
+# Time to wait between API check attempts in milliseconds 
 COMFY_API_AVAILABLE_INTERVAL_MS = 50
 # Maximum number of API check attempts
 COMFY_API_AVAILABLE_MAX_RETRIES = 500

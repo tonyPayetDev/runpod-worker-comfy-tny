@@ -146,49 +146,50 @@ def base64_encode(img_path):
         encoded_string = base64.b64encode(image_file.read()).decode("utf-8")
         return f"{encoded_string}"
 
-def process_output_images(outputs, job_id):
+def process_output_videos(outputs, job_id):
     COMFY_OUTPUT_PATH = os.environ.get("COMFY_OUTPUT_PATH", "/comfyui/output")
     
-    # Use a list to accumulate image paths
-    output_images = []
+    output_videos = []
 
+    # Vérifier s'il y a une vidéo en sortie
     for node_id, node_output in outputs.items():
-        if "images" in node_output:
-            for image in node_output["images"]:
-                image_path = os.path.join(image["subfolder"], image["filename"])
-                output_images.append(image_path)
+        if "video" in node_output:
+            video_path = os.path.join(node_output["subfolder"], node_output["video"])
+            output_videos.append(video_path)
 
-    print("runpod-worker-comfy - image generation is done")
+    print("runpod-worker-comfy - video generation is done")
     
-    # Check if any images were found
-    if not output_images:
-        print("runpod-worker-comfy - no images found in the outputs")
+    # Si aucune vidéo n'a été générée, afficher une erreur
+    if not output_videos:
+        print("runpod-worker-comfy - no video found in the outputs")
         return {
             "status": "error",
-            "message": "No images were generated in the output.",
+            "message": "No video was generated in the output.",
         }
-    processed_images = []
-    for rel_path in output_images:
-        local_image_path = os.path.join(COMFY_OUTPUT_PATH, rel_path)
-        print(f"runpod-worker-comfy - Processing image at {local_image_path}")
+
+    processed_videos = []
+    for rel_path in output_videos:
+        local_video_path = os.path.join(COMFY_OUTPUT_PATH, rel_path)
+        print(f"runpod-worker-comfy - Processing video at {local_video_path}")
     
-        if os.path.exists(local_image_path):
+        if os.path.exists(local_video_path):
             if SUPABASE_URL and SUPABASE_API_KEY and SUPABASE_BUCKET:
-                image = upload_to_supabase(base64_encode(local_image_path), file_name)
-                print("runpod-worker-comfy - l'image a été générée et téléchargée sur Supabase")
+                video_base64 = encode_video_to_base64(local_video_path)
+                file_name = f"{job_id}.mp4"
+                upload_to_supabase(video_base64, file_name)
+                print("runpod-worker-comfy - la vidéo a été générée et téléchargée sur Supabase")
             else:
-                image_result = base64_encode(local_image_path)
-                print("runpod-worker-comfy - the image was generated and converted to base64")
-            processed_images.append(image_result)
+                video_result = encode_video_to_base64(local_video_path)
+                print("runpod-worker-comfy - la vidéo a été générée et convertie en base64")
+            processed_videos.append(video_result)
         else:
-            print(f"runpod-worker-comfy - the image does not exist: {local_image_path}")
-            processed_images.append(f"Error: Image does not exist at {local_image_path}")
+            print(f"runpod-worker-comfy - the video does not exist: {local_video_path}")
+            processed_videos.append(f"Error: Video does not exist at {local_video_path}")
 
     return {
         "status": "success",
-        "message": processed_images,
+        "message": processed_videos,
     }
-
 
 def handler(job):
     job_input = job["input"]
@@ -218,7 +219,7 @@ def handler(job):
     except Exception as e:
         return {"error": f"Error queuing workflow: {str(e)}"}
 
-    print(f"runpod-worker-comfy - wait until image generation is complete")
+    print(f"runpod-worker-comfy - wait until video generation is complete")
     retries = 0
     try:
         while retries < COMFY_POLLING_MAX_RETRIES:
@@ -230,13 +231,13 @@ def handler(job):
                 time.sleep(COMFY_POLLING_INTERVAL_MS / 1000)
                 retries += 1
         else:
-            return {"error": "Max retries reached while waiting for image generation"}
+            return {"error": "Max retries reached while waiting for video generation"}
     except Exception as e:
-        return {"error": f"Error waiting for image generation: {str(e)}"}
+        return {"error": f"Error waiting for video generation: {str(e)}"}
 
-    images_result = process_output_images(history[prompt_id].get("outputs"), job["id"])
+    videos_result = process_output_videos(history[prompt_id].get("outputs"), job["id"])
 
-    result = {**images_result, "refresh_worker": REFRESH_WORKER}
+    result = {**videos_result, "refresh_worker": REFRESH_WORKER}
     return result
 
 if __name__ == "__main__":

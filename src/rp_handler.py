@@ -183,7 +183,8 @@ def process_output_videos(outputs, job_id):
             if SUPABASE_URL and SUPABASE_API_KEY and SUPABASE_BUCKET:
                 video_base64 = encode_video_to_base64(local_video_path)
                 file_name = f"{job_id}.mp4"
-                upload_to_supabase(video_base64, file_name)
+                image = upload_to_supabase(video_base64, file_name)
+
                 print("runpod-worker-comfy - la vidéo a été générée et téléchargée sur Supabase")
             else:
                 video_result = encode_video_to_base64(local_video_path)
@@ -195,7 +196,7 @@ def process_output_videos(outputs, job_id):
 
     return {
         "status": "success",
-        "message": processed_videos,
+        "message": image,
     }
 
 # def process_output_videos(outputs, job_id):

@@ -151,7 +151,6 @@ def process_output_videos(outputs, job_id):
     
     output_videos = []
 
-    # Vérifier s'il y a une vidéo en sortie
     for node_id, node_output in outputs.items():
         if "video" in node_output:
             video_path = os.path.join(node_output["subfolder"], node_output["video"])
@@ -159,7 +158,6 @@ def process_output_videos(outputs, job_id):
 
     print("runpod-worker-comfy - video generation is done")
     
-    # Si aucune vidéo n'a été générée, afficher une erreur
     if not output_videos:
         print("runpod-worker-comfy - no video found in the outputs")
         return {

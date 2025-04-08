@@ -146,18 +146,28 @@ def base64_encode(img_path):
         encoded_string = base64.b64encode(image_file.read()).decode("utf-8")
         return f"{encoded_string}"
 
+
 def process_output_videos(outputs, job_id):
     COMFY_OUTPUT_PATH = os.environ.get("COMFY_OUTPUT_PATH", "/comfyui/output")
-    
+
     output_videos = []
 
     for node_id, node_output in outputs.items():
+        # Vérifie si une clé "video" existe
         if "video" in node_output:
-            video_path = os.path.join(node_output["subfolder"], node_output["video"])
+            video_filename = node_output.get("video")
+            subfolder = node_output.get("subfolder", "")
+            video_path = os.path.join(COMFY_OUTPUT_PATH, subfolder, video_filename)
             output_videos.append(video_path)
 
+    # ✅ Cas de fallback si aucun chemin détecté via les métadonnées
+    if not output_videos:
+        for file in os.listdir(COMFY_OUTPUT_PATH):
+            if file.endswith(".mp4"):
+                output_videos.append(os.path.join(COMFY_OUTPUT_PATH, file))
+
     print("runpod-worker-comfy - video generation is done")
-    
+
     if not output_videos:
         print("runpod-worker-comfy - no video found in the outputs")
         return {
@@ -166,10 +176,9 @@ def process_output_videos(outputs, job_id):
         }
 
     processed_videos = []
-    for rel_path in output_videos:
-        local_video_path = os.path.join(COMFY_OUTPUT_PATH, rel_path)
+    for local_video_path in output_videos:
         print(f"runpod-worker-comfy - Processing video at {local_video_path}")
-    
+
         if os.path.exists(local_video_path):
             if SUPABASE_URL and SUPABASE_API_KEY and SUPABASE_BUCKET:
                 video_base64 = encode_video_to_base64(local_video_path)
@@ -179,7 +188,7 @@ def process_output_videos(outputs, job_id):
             else:
                 video_result = encode_video_to_base64(local_video_path)
                 print("runpod-worker-comfy - la vidéo a été générée et convertie en base64")
-            processed_videos.append(video_result)
+                processed_videos.append(video_result)
         else:
             print(f"runpod-worker-comfy - the video does not exist: {local_video_path}")
             processed_videos.append(f"Error: Video does not exist at {local_video_path}")
@@ -188,6 +197,49 @@ def process_output_videos(outputs, job_id):
         "status": "success",
         "message": processed_videos,
     }
+
+# def process_output_videos(outputs, job_id):
+#     COMFY_OUTPUT_PATH = os.environ.get("COMFY_OUTPUT_PATH", "/comfyui/output")
+    
+#     output_videos = []
+
+#     for node_id, node_output in outputs.items():
+#         if "video" in node_output:
+#             video_path = os.path.join(node_output["subfolder"], node_output["video"])
+#             output_videos.append(video_path)
+
+#     print("runpod-worker-comfy - video generation is done")
+    
+#     if not output_videos:
+#         print("runpod-worker-comfy - no video found in the outputs")
+#         return {
+#             "status": "error",
+#             "message": "No video was generated in the output.",
+#         }
+
+#     processed_videos = []
+#     for rel_path in output_videos:
+#         local_video_path = os.path.join(COMFY_OUTPUT_PATH, rel_path)
+#         print(f"runpod-worker-comfy - Processing video at {local_video_path}")
+    
+#         if os.path.exists(local_video_path):
+#             if SUPABASE_URL and SUPABASE_API_KEY and SUPABASE_BUCKET:
+#                 video_base64 = encode_video_to_base64(local_video_path)
+#                 file_name = f"{job_id}.mp4"
+#                 upload_to_supabase(video_base64, file_name)
+#                 print("runpod-worker-comfy - la vidéo a été générée et téléchargée sur Supabase")
+#             else:
+#                 video_result = encode_video_to_base64(local_video_path)
+#                 print("runpod-worker-comfy - la vidéo a été générée et convertie en base64")
+#             processed_videos.append(video_result)
+#         else:
+#             print(f"runpod-worker-comfy - the video does not exist: {local_video_path}")
+#             processed_videos.append(f"Error: Video does not exist at {local_video_path}")
+
+#     return {
+#         "status": "success",
+#         "message": processed_videos,
+#     }
 
 def handler(job):
     job_input = job["input"]

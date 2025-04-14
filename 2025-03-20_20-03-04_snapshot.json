@@ -94,7 +94,9 @@
         "comfyui-custom-scripts": "1.2.3",
         "comfyui-florence2": "1.0.3",
         "comfyui_pulid_flux_ll": "1.1.4",
-        "wavespeed": "1.1.8"
+        "wavespeed": "1.1.8",
+           "comfyui-kjnodes": "1.0.8",
+         "comfyui-videohelpersuite": "1.5.12"
     },
     "file_custom_nodes": [
         {
